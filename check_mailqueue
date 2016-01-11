@@ -1,0 +1,38 @@
+#!/bin/bash
+val_ok=200;
+val_warn=300;
+salida=()
+
+
+cc=`/usr/bin/sudo /usr/sbin/exim -bpc`
+
+
+if [ -z "$cc" ]; then
+  echo "CRITICAL - ERROR de permisos en plugin verificar /etc/sudoers";
+  exit 2;
+fi
+
+
+if [ $cc -le $val_ok ]; then
+  echo "OK - $cc correos en la cola de salida.";
+  exit 0;
+else
+  cpd=`/usr/bin/sudo /usr/sbin/exim -bpr | grep "<" | awk {'print $4'} |cut -d "<" -f 2 | cut -d ">" -f 1 | sort -n | uniq -c| sort -n`
+
+  echo "$cpd" |{ while IFS= read -r line
+  do
+     #echo "$line"
+     text=`echo "$line" | awk -F' ' '{print "("$1")"$2 }'`;
+     salida+=("$text");
+  done
+
+  if [ $cc -le $val_warn ]; then
+    echo "WARNING - $cc correos en la cola de salida."${salida[@]};
+    exit 1;
+  elif [ $cc -ge $val_warn ]; then
+    echo "CRITICAL - $cc correos en la cola de salida."${salida[@]};
+    exit 2;
+  fi
+
+  }
+fi
